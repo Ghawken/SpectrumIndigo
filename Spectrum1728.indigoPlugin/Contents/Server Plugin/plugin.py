@@ -59,6 +59,8 @@ class Plugin(indigo.PluginBase):
         self.connected = False
         self.deviceUpdate = False
         self.devicetobeUpdated =''
+
+
         self.socket = self.connectToSocket()
         self.bytes = []
         self.triggers = {}
@@ -110,8 +112,13 @@ class Plugin(indigo.PluginBase):
 
     def runConcurrentThread(self):
         x =0
+
+
         try:
 
+            if self.connected == False:
+                self.socket = self.connectToSocket()
+                self.sleep(5)
 
             while self.connected:
                 x = x +1
@@ -123,9 +130,12 @@ class Plugin(indigo.PluginBase):
                     response = data[0]
                 except socket.error,msg:
                     self.logger.debug(u'Timeout: Expected error'+unicode(msg))
+                    self.connected= False
                     pass
                 except Exception as error:
                     self.logger.debug(u'Exception Not Expected:'+unicode(error))
+                    self.connected = False
+                    pass
 
                 try:
                     if response != '':
@@ -219,6 +229,8 @@ class Plugin(indigo.PluginBase):
                 except Exception as error:
                     self.logger.error(u'Error within Devices Update:'+unicode(error))
                     pass
+
+
 
             self.sleep(0.5)
 
@@ -361,17 +373,22 @@ class Plugin(indigo.PluginBase):
         del self.triggers[trigger.id]
 
     def triggerCheck(self, device):
+        try:
 
-        for triggerId, trigger in sorted(self.triggers.iteritems()):
-            self.logger.debug("Checking Trigger %s (%s), Type: %s" % (trigger.name, trigger.id, trigger.pluginTypeId))
+            for triggerId, trigger in sorted(self.triggers.iteritems()):
+                self.logger.debug("Checking Trigger %s (%s), Type: %s" % (trigger.name, trigger.id, trigger.pluginTypeId))
 
-            if trigger.pluginProps["deviceID"] != str(device.id):
-                self.logger.debug("\t\tSkipping Trigger %s (%s), wrong device: %s" % (trigger.name, trigger.id, device.id))
-            else:
-                if trigger.pluginTypeId == "motion":
-                    self.logger.debug("\tExecuting Trigger %s (%d)" % (trigger.name, trigger.id))
-                    indigo.trigger.execute(trigger)
-
+                if trigger.pluginProps["deviceID"] != str(device.id):
+                    self.logger.debug("\t\tSkipping Trigger %s (%s), wrong device: %s" % (trigger.name, trigger.id, device.id))
                 else:
-                    self.logger.debug("\tUnknown Trigger Type %s (%d), %s" % (trigger.name, trigger.id, trigger.pluginTypeId))
-        return
+                    if trigger.pluginTypeId == "motion":
+                        self.logger.debug("\tExecuting Trigger %s (%d)" % (trigger.name, trigger.id))
+                        indigo.trigger.execute(trigger)
+
+                    else:
+                        self.logger.debug("\tUnknown Trigger Type %s (%d), %s" % (trigger.name, trigger.id, trigger.pluginTypeId))
+            return
+        except Exception as error:
+            self.errorLog(u"Error Trigger. Please check settings.")
+            self.errorLog(unicode(error.message))
+            return False
