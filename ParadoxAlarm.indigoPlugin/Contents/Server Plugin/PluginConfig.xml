@@ -1,0 +1,94 @@
+<?xml version="1.0"?>
+<PluginConfig>
+  <Field id="infoLabel0" type="label" fontSize='large' fontColor="black">
+    <Label>Paradox Alarm Plugin</Label>
+  </Field>
+
+  <Field id="space0" type="label" fontColor="black" >
+    <Label>Developed by: GlennNZ</Label>
+  </Field>
+  <Field id="sep7" type="separator"/>
+
+            <Field id="ipaddress"
+				   type="textfield"
+				   tooltip="Enter ipaddress or localhost checkbox"
+				   default=""                   >
+
+				<Label>Enter your Ip Address of IP150 Device Service:</Label>
+			</Field>
+            <Field id="port"
+				   type="textfield"
+				   tooltip="Enter Port of DeepState Service"
+				   default="1000"                   >
+				<Label>Enter your Port Used to Connect Default 10000:</Label>
+			</Field>
+            <Field id="ip150password"
+				   type="textfield"
+				   tooltip="Enter IP150 password"
+				   default=""                   >
+
+				<Label>Enter your IP150 Password: (default is paradox)</Label>
+			</Field>
+            <Field id="pcpassword"
+				   type="textfield"
+				   tooltip="Enter PC Password"
+				   default="1000"                   >
+				<Label>Enter your PC Password (Default 1234):</Label>
+			</Field>
+        <Field id="space1sa1" type="label" fontSize="small">
+        <Label>These can be difficult to figure out.  If incorrect can connect, but have label issues, or strange issues..
+
+            IP address - of IP150 Device.  Should be static.
+            Port for IP150 Device - should almost always be left at default of 10000
+            ip150 Password - this is the password that you login on web page to the IP150 with.  Default is paradox.
+            PC Password - this one is the most confusing.  Is the password with which you login to 'Babyware' with, or the PC Password as set on your alarm panel manually.  Default is 1234.
+
+        </Label>
+    </Field>
+
+    <Field id="space10" type="label" alignText="right">
+        <Label>Debugging Options:</Label>
+    </Field>
+
+    <Field id="sep4" type="separator"/>
+
+    <Field id="space11" type="label" fontSize="small">
+        <Label>Turn on debugging only when needed. Be careful when posting the output to the forums or other public places as it could expose sensitive information.</Label>
+    </Field>
+
+    <Field id="debug1" type="checkbox" tooltip="Enabling will result in verbose logging of IP150 connection.">
+        <Label/>
+        <Description>Debug 1</Description>
+    </Field>
+
+    <Field id="debug2" type="checkbox" tooltip="Enabling will result in .">
+        <Label/>
+        <Description>Debug 2</Description>
+    </Field>
+    <Field id="debug3" type="checkbox" tooltip="Enabling will result .">
+        <Label/>
+        <Description>Debug 3</Description>
+    </Field>
+    <Field id="debug4" type="checkbox" tooltip="Enabling will result .">
+        <Label/>
+        <Description>Debug 4</Description>
+    </Field>
+        <Field id="debug5" type="checkbox" tooltip="Enabling will .">
+        <Label/>
+        <Description>Debug 5:Triggers</Description>
+    </Field>
+
+    <Field id="showDebugLevel" type="menu" defaultValue="20" tooltip="Controls the amount of debug information written to the log.">
+        <Label>Debug level:</Label>
+        <Description>Level of Debug information to show in Indigo</Description>
+        <List>
+            <Option value="5">Detailed Debugging Messages</Option>
+            <Option value="10">Debugging Messages</Option>
+            <Option value="20">Informational Messages</Option>
+            <Option value="30">Warning Messages</Option>
+            <Option value="40">Error Messages</Option>
+            <Option value="50">Critical Errors Only</Option>
+        </List>
+    </Field>
+
+</PluginConfig>

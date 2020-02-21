@@ -1,0 +1,62 @@
+<?xml version="1.0"?>
+<Actions>
+      <Action id="controlALARM">
+        <Name>Control Alarm</Name>
+        <CallbackMethod>controlAlarm</CallbackMethod>
+        <ConfigUI>
+           	<Field id="partition" type="menu" defaultValue="1">
+				<Label>Partition Number:</Label>
+				<List>
+					<Option value="1">1</Option>
+					<Option value="2">2</Option>
+					<Option value="3">3</Option>
+					<Option value="4">4</Option>
+				</List>
+            </Field>
+            <Field id="action" type="menu" defaultValue="1">
+				<Label>Action:</Label>
+				<List>
+					<Option value="ARM">Arm</Option>
+					<Option value="SLEEP">Sleep</Option>
+                    <Option value="STAY">Stay</Option>
+					<Option value="DISARM">Disarm </Option>
+
+				</List>
+            </Field>
+        </ConfigUI>
+    </Action>
+
+    <Action id="controlPGM">
+        <Name>Control PGM Output</Name>
+        <CallbackMethod>controlPGM</CallbackMethod>
+        <ConfigUI>
+           	<Field id="pgm" type="menu" defaultValue="1">
+				<Label>PGM Output Number:</Label>
+				<List>
+					<Option value="1">1</Option>
+					<Option value="2">2</Option>
+					<Option value="3">3</Option>
+					<Option value="4">4</Option>
+                    <Option value="5">5</Option>
+					<Option value="6">6</Option>
+					<Option value="7">7</Option>
+					<Option value="8">8</Option>
+				</List>
+            </Field>
+            <Field id="action" type="menu" defaultValue="1">
+				<Label>Action:</Label>
+				<List>
+					<Option value="ON">On</Option>
+					<Option value="OFF">Off</Option>
+                    <Option value="ON_OVERRIDE">On (Overide)</Option>
+					<Option value="OFF_OVERRIDE">Off (Overide) </Option>
+                    <Option value="BEEP">Beep</Option>
+				</List>
+            </Field>
+        </ConfigUI>
+    </Action>
+
+
+  
+</Actions>
+
