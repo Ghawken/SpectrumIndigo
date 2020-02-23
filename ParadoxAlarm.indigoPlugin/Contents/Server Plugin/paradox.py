@@ -118,7 +118,7 @@ class paradox:
         else:
             self.plugin.connected = False
             loggedin = 0
-            self.logger.debug(u"Login request unsuccessful, panel returned: " + " ".join(hex(reply)))
+            self.logger.debug(u"Login request unsuccessful, panel returned: " + str(" ".join(hex(reply))))
             return
 
         header = list(header)
