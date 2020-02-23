@@ -441,12 +441,9 @@ class paradox:
         reply = '.'
         if Debug_Mode > 1 and reply_amount > 1:
             self.logger.debug("Multiple data: " + repr(messages))
+        self.retries = 10
 
         if reply_amount > 0:
-            if self.retries < 10:
-                self.logger.debug("Setting retries back to 3 after a couple of errors")
-                self.retries = 10
-
             for message in messages:
                 #if self.plugin.debug3:
                     #self.logger.debug("Event data: " + " ".join(hex(ord(i)) for i in message))
@@ -465,9 +462,9 @@ class paradox:
                                     self.logger.debug("Event location: \"%s\"" % location)
                                     #self.logger.debug "Event location: \"%s\"" % location
 
-                                reply = "Event:" + event + ";SubEvent:" + subevent
-                                if self.plugin.debug3:
-                                    self.logger.debug("Reply:"+unicode(reply))
+                                reply = str(ord(message[7])) + "=Event:" + event + " & " + str(ord(message[8]))+"=SubEvent:" + subevent
+
+                                self.logger.debug(unicode(reply))
                                 try:
                                     if (ord(message[7]) == 0 or ord(message[7]) ==1) and (self.zoneNames is not None and len(self.zoneNames) > 0):
                                         #self.logger.debug("Message is a 1 or 0, and self.Zonenames not empty")
@@ -481,46 +478,57 @@ class paradox:
                                 except Exception as ezone:
                                         self.logger.debug("Exception checking/updating zone names: {}".format(ezone.message))
 
+                                if ord(message[7])==2:  ## this is _partitionstatus change, check trigger and then do the other if/elif's
+                                    self.plugin.partitionstatusChange(ord(message[8]))
+
                                 # zone status messages Paradox/Zone/ZoneName 0 for close, 1 for open
                                 if ord(message[7]) == 0:
                                     #Zone state off
-                                    self.logger.debug("Zone OFF:"+str(location))
+                                    if self.plugin.debug3:
+                                        self.logger.debug("Zone OFF:"+str(location))
                                     self.plugin.zoneMotionFound(ord(message[8]), ord(message[7]))
                                    # self.logger.debug("Publishing ZONE event \"%s\" for \"%s\" =  %s" % (Topic_Publish_ZoneState, location, ZonesOff))
                                     #self.client.publish(Topic_Publish_ZoneState + "/" + location,ZonesOff, qos=1, retain=True)
                                 elif ord(message[7]) == 1:
                                     #zone state on
-                                    self.logger.debug("Zone ON:"+str(location))
+                                    if self.plugin.debug3:
+                                        self.logger.debug("Zone ON:"+str(location))
                                     self.plugin.zoneMotionFound(ord(message[8]), ord(message[7]))
                                     #self.logger.debug("Publishing ZONE event \"%s\" for \"%s\" =  %s" % ("", location, ZonesOn))
                                     #self.client.publish(Topic_Publish_ZoneState + "/" + location,ZonesOn, qos=1, retain=True)
+
+                                elif ord(message[7])== 2 and (ord(message[8])==14):
+                                    # 14 - Exit Delay Started
+                                    # Is a Partition status event
+                                    self.logger.debug("Exit Delay Started")
+
                                 elif ord(message[7]) == 2 and (ord(message[8]) == 11 or ord(message[8]) == 3):   #Disarm
                                     #partition disarmed event
                                     self.logger.debug("Publishing DISARMED event \"%s\" =  \"%s\"" % ("", self.Alarm_Partition_States['DISARMED']))
                                     #self.client.publish(Topic_Publish_ArmState ,ZonesOff, qos=1, retain=True)
                                     #self.client.publish(Topic_Publish_ArmState + "/" + location+ "/Status" ,self.Alarm_Partition_States['DISARMED'], qos=1, retain=True)
-                                    self.plugin.partitionstatusChange(ord(message[8]),"DISARMED")
+
                                 elif ord(message[7]) == 6 and (ord(message[8]) == 4 ):   #SLEEP
                                     #partition sleep armed event
                                     #12 is sleep arm, 14 is full arm- is STAY 13?
                                     self.logger.debug("Publishing SLEEP event \"%s\" =  \"%s\"" % ("", self.Alarm_Partition_States['SLEEP']))
                                     #self.client.publish(Topic_Publish_ArmState ,ZonesOn, qos=1, retain=True)
                                     #self.client.publish(Topic_Publish_ArmState + "/" + location+ "/Status", self.Alarm_Partition_States['SLEEP'], qos=1, retain=True)
-                                    self.plugin.partitionstatusChange(ord(message[8]), "SLEEP")
+
                                 elif ord(message[7]) == 6 and (ord(message[8]) == 3 ):   #STAY
                                     #partition stayd armed event
                                     #12 is sleep arm, 14 is full arm- is STAY 13?
                                     self.logger.debug("Publishing STAY event \"%s\" =  \"%s\"" % ("", self.Alarm_Partition_States['STAY']))
                                     #self.client.publish(Topic_Publish_ArmState ,ZonesOn, qos=1, retain=True)
                                     #self.client.publish(Topic_Publish_ArmState + "/" + location+ "/Status", self.Alarm_Partition_States["STAY"], qos=1, retain=True)
-                                    self.plugin.partitionstatusChange(ord(message[8]), "STAY")
+
                                 elif ord(message[7]) == 2 and (ord(message[8]) == 12):   #arm
                                     #partition full armed event
                                     #12 is sleep arm, 14 is full arm - is STAY 13?
                                     self.logger.debug("Publishing ARMED event \"%s\" =  \"%s\"" % ("", self.Alarm_Partition_States["ARMED"]))
                                     #self.client.publish(Topic_Publish_ArmState ,ZonesOn, qos=1, retain=True)
                                     #self.client.publish(Topic_Publish_ArmState + "/" + location+ "/Status", self.Alarm_Partition_States["ARMED"], qos=1, retain=True)
-                                    self.plugin.partitionstatusChange(ord(message[8]), "ARMED")
+
                                 elif ord(message[7]) == 2 and (ord(message[8]) == 9):   #Arming state on Swawk off
                                     #sqwak off messages - part of the arming sequence.
                                     self.logger.debug("Publishing ARMING event \"%s\" =  \"%s\"" % ("", self.Alarm_Partition_States["ARMING"]))
@@ -646,10 +654,11 @@ class paradox:
             except socket.timeout, e:
                 err = e.args[0]
                 if err == 'timed out':
-                    #self.logger.debug("Timed out error, no retry -<-- could fix this" + repr(e))
+                    self.logger.debug("Timed out error, no retry -<-- could fix this" + repr(e))
                     #this seems to be where it goes normally while waiting for traffic.
                     tries = 0
-                    sys.exc_clear()
+
+                    #self.plugin.connected = False
                     return ''
                     # sleep(1)
                     # #self.logger.debug 'Receive timed out, ret'
@@ -666,10 +675,10 @@ class paradox:
                 time.sleep(Error_Delay)
                 if tries == 0:
                     self.logger.debug("Failure, disconnected.")
-                    sys.exit(1)
+                    self.plugin.connected = False
                 else:
                     self.logger.debug("After error, continuing %d attempts left" % tries)
-                    sys.exc_clear()
+                    self.sleep(5)
                     return ''
             else:
                 if len(inc_data) == 0:
@@ -678,7 +687,7 @@ class paradox:
                     time.sleep(Error_Delay)
                     if tries == 0:
                         self.logger.debug('Failure, disconnecting')
-                        sys.exit(0)
+                        self.plugin.connected = False
                     return ''
                 else:
                     return inc_data
@@ -733,7 +742,8 @@ class paradox:
         header = registers["Header"]
 
         self.logger.debug("Sending generic Alarm Control: Partition: " + str(partition) + ", State: " + state)
-
+        sending = True
+        retries =0
         message = registers[partition][state]
 
         assert isinstance(message, basestring), "Message to be sent is not a string: %r" % message
@@ -741,7 +751,36 @@ class paradox:
 
         # #self.logger.debug " ".join(hex(ord(i)) for i in message)
 
-        reply = self.readDataRaw(header + self.format37ByteMessage(message), Debug_Mode)
+        while sending == True and retries <=3:
+            self.logger.debug("Sending generic Alarm Control: Partition: " + str(partition) + ", State: " + state)
+            reply = self.readDataRaw(header + self.format37ByteMessage(message), Debug_Mode)
+
+            #self.logger.debug("Reply Obtained:  Need to check has actioned otherwise repeat...."+unicode(message))
+
+            data = reply[16:]
+            messagesent = registers[partition][state]
+            #self.logger.debug(str(len(reply)) + "Reply:" + " ".join(hex(ord(i)) for i in reply))
+            self.logger.debug("Data 0:"+unicode(hex(ord(data[0]))))
+            self.logger.debug("messagesent 2:" + unicode(hex(ord(messagesent[2]))))
+            self.logger.debug("Data 2:" + unicode(hex(ord(data[2]))))  ## is the command sent, if not returned then error.
+            #self.logger.error("Data 3:" + unicode(hex(ord(data[3]))))
+            commandtobesent = ord(messagesent[2])
+            replycommand = ord(data[2])
+
+            if commandtobesent != replycommand:
+                self.logger.info(u'Command returned, is not that sent ; resending/retrying command.  Retry '+unicode(retries))
+                sending= True
+                retries = retries +1
+                time.sleep(1)
+
+            else:
+                sending = False
+                self.logger.info(u'Command successfully sent.')
+                return
+
+        self.logger.info(u'Command failed despite retries... aborting.')
+
+
 
         return
 
@@ -842,15 +881,15 @@ class paradox:
                     self.logger.debug("Publishing Partition Arm state (state: {}, bit: {})".format( zoneState, itemNo))
                 if zoneState == ZonesOn:
                     armstate = "ARMED"
-                    self.plugin.partitionstatusChange(partition, armstate)
+
             elif itemNo == 2: # sleep
                 if zoneState == ZonesOn:
                     armstate = "SLEEP"
-                    self.plugin.partitionstatusChange(partition, armstate)
+
             elif itemNo == 3: #away
                 if zoneState == ZonesOn:
                     armstate = "STAY"
-                    self.plugin.partitionstatusChange(partition, armstate)
+
             ##client.publish(Topic_Publish_ZoneState + "/" + location, "ON" if bit else "OFF", qos=1, retain=True)
             ##client.publish(Topic_Publish_ZoneState + "/" + location, "ON" if bit else "OFF", qos=1, retain=True)
         partition1status2 = ord(data[1])
@@ -865,7 +904,7 @@ class paradox:
             if itemNo == 1:
                 if zoneState == ZonesOn:
                     armstate = "ARMING"
-                    self.plugin.partitionstatusChange(partition, armstate)
+
 
         partitionlocation =  ""
         if self.partitions:

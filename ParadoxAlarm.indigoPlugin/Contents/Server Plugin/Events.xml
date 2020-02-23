@@ -6,11 +6,56 @@
         <ConfigUI>
             <Field id="deviceID" type="menu">
                 <Label>Select Device:</Label>
-                <List class="indigo.devices" filter="self"/>
+                <List class="indigo.devices" filter="self.paradoxalarmMotion"/>
             </Field>
         </ConfigUI>
     </Event>
+    <Event id="alarmstatus">
+        <Name>Alarm Status</Name>
+        <ConfigUI>
+        <Field id="zonePartition" type="menu" defaultValue="1">
+				<Label>Partition Number:</Label>
+				<List>
+					<Option value="1">1</Option>
+					<Option value="2">2</Option>
+					<Option value="3">3</Option>
+					<Option value="4">4</Option>
+				</List>
+			</Field>
+             <Field id="alarmstate" type="menu" defaultValue="1">
+				<Label>Status to Trigger On:</Label>
+				<List>
+					<Option value="ARM">Arm</Option>
+					<Option value="SLEEP">Sleep</Option>
+                    <Option value="STAY">Stay</Option>
+					<Option value="DISARM">Disarm </Option>
+				</List>
+            </Field>
 
-  
+        </ConfigUI>
+    </Event>
+      <Event id="alarmdisarm">
+        <Name>Alarm Active</Name>
+        <ConfigUI>
+        <Field id="zonePartition" type="menu" defaultValue="1">
+				<Label>Partition Number:</Label>
+				<List>
+					<Option value="1">1</Option>
+					<Option value="2">2</Option>
+					<Option value="3">3</Option>
+					<Option value="4">4</Option>
+				</List>
+			</Field>
+        </ConfigUI>
+    </Event>
+          <Event id="partitionstatuschange">
+        <Name>Partition Status Change</Name>
+        <ConfigUI>
+				<Field id="paritionstatus" type="list" rows="14">
+					<Label>State:</Label>
+					<List class="self" filter="" method="paritionstatusList"/>
+				</Field>
+        </ConfigUI>
+    </Event>
 </Events>
 

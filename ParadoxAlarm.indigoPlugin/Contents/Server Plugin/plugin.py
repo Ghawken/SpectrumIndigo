@@ -61,7 +61,7 @@ class Plugin(indigo.PluginBase):
         self.ip150password = self.pluginPrefs.get('ip150password', 'paradox')
         self.pcpassword = self.pluginPrefs.get('pcpassword', 1234)
 
-        self.labelsdueupdate = False
+        self.labelsdueupdate = True
         self.debug1 = self.pluginPrefs.get('debug1', False)
         self.debug2 = self.pluginPrefs.get('debug2', False)
         self.debug3 = self.pluginPrefs.get('debug3', False)
@@ -81,6 +81,28 @@ class Plugin(indigo.PluginBase):
         self.zoneNames = {}
 
         self.triggers = {}
+        self.alarmeventmap = "ParadoxMG5050"
+        self.alarmregmap = "ParadoxMG5050"
+
+        try:
+            mod = __import__("ParadoxMap", fromlist=[self.alarmeventmap + "EventMap"])
+            self.eventmap = getattr(mod, self.alarmeventmap + "EventMap")
+        except Exception, e:
+            self.logger.debug("Failed to load Event Map: %s " % repr(e))
+            self.logger.debug("Defaulting to MG5050 Event Map...")
+            try:
+                mod = __import__("ParadoxMap", fromlist=["ParadoxMG5050EventMap"])
+                self.eventmap = getattr(mod, "ParadoxMG5050EventMap")
+            except Exception, e:
+                self.logger.exception("Failed to load Event Map (exiting): %s" % repr(e))
+
+        try:
+            mod = __import__("ParadoxMap", fromlist=[self.alarmregmap + "Registers"])
+            self.registermap = getattr(mod, self.alarmregmap + "Registers")
+        except Exception, e:
+            self.logger.debug("Failed to load Register Map (defaulting to not update labels from alarm): %s" % repr(e))
+            self.Skip_Update_Labels = 1
+
 
     def __del__(self):
 
@@ -120,7 +142,7 @@ class Plugin(indigo.PluginBase):
     def deviceStopComm(self, dev):
 
         self.debugLog(u"deviceStopComm() method called.")
-        indigo.server.log(u"Stopping  device: " + dev.name)
+        #indigo.server.log(u"Stopping  device: " + dev.name)
         if dev.deviceTypeId == 'ParadoxMain':
             dev.updateStateOnServer('deviceIsOnline', value=False)
         if dev.deviceTypeId == "paradoxalarmMotion":
@@ -139,77 +161,92 @@ class Plugin(indigo.PluginBase):
         self.updater.update()
 
     def runConcurrentThread(self):
+
         x =0
         Alarm_Model = "ParadoxMG5050"
         Alarm_Registry_Map = "ParadoxMG5050"
         Alarm_Event_Map = "ParadoxMG5050"
         updatemaindevice = t.time() + 15
+
         try:
 
-            if self.connected == False and self.ipaddress !='':
-                self.socket = self.connect_ip150socket(str(self.ipaddress), str(self.port))
-                self.sleep(3)
-                self.logger.info("Connecting to IP Module:" + self.ipaddress + " with Port:" + str(self.port))
-                self.myAlarm = paradox.paradox(self, self.socket, "", 0, 3, Alarm_Event_Map, Alarm_Registry_Map)
-                if not self.myAlarm.login(str(self.ip150password), str(self.pcpassword), 0):
-                    self.logger.info(
-                        u"Failed to login & unlock to IP module, check if another app is using the port. Retrying... ")
-                    self.socket.close()
-                    self.sleep(20)
-                    self.connected = False
-                else:
-                    # client.publish(Topic_Publish_AppState, "State Machine 2, Logged into IP Module successfully", 1, True)
-                    self.logger.info("Logged into IP module successfully")
-                    self.connected = True
+            while True:
+                if self.connected == False:
+                    self.socket = self.connect_ip150socket(str(self.ipaddress), str(self.port))
+                    self.sleep(1)
+                    self.logger.info("Connecting to IP Module:" + self.ipaddress + " with Port:" + str(self.port))
+                    self.sleep(3)
 
-            zoneNames = self.myAlarm.updateAllLabels("True", "True", 0)
-            self.labelsdueupdate = False
-            self.logger.info(unicode(self.myAlarm.returnZoneNames()))
-            self.myAlarm.updateZoneAndAlarmStatus("True", 0)
+                if self.connected:
+                    self.myAlarm = paradox.paradox(self, self.socket, "", 0, 3, Alarm_Event_Map, Alarm_Registry_Map)
+                    self.sleep(1)
+                    if not self.myAlarm.login(str(self.ip150password), str(self.pcpassword), 0):
+                        self.logger.info(
+                            u"Failed to login & unlock to IP module, check if another app is using the port. Retrying... ")
+                        self.socket.close()
+                        self.sleep(20)
+                        self.connected = False
+                    else:
+                        self.logger.info("Logged into IP module successfully")
+                        self.connected = True
 
-            while self.connected:
-                self.myAlarm.keepAlive(0)
-                zoneNames = ""
-                if self.labelsdueupdate:
-                    zoneNames = self.myAlarm.updateAllLabels("True","True",0)
-                    self.labelsdueupdate = False
-                    self.logger.info(unicode(self.myAlarm.returnZoneNames()))
+                    if self.labelsdueupdate:
+                        zoneNames = self.myAlarm.updateAllLabels("True", "True", 0)
+                        self.labelsdueupdate = False
+                    self.logger.debug(unicode(self.myAlarm.returnZoneNames()))
+                    self.myAlarm.updateZoneAndAlarmStatus("True", 0)
 
+                while self.connected:
+                    self.myAlarm.keepAlive(0)
+                    zoneNames = ""
+                    if self.labelsdueupdate:
+                        zoneNames = self.myAlarm.updateAllLabels("True","True",0)
+                        self.labelsdueupdate = False
+                        self.logger.debug(unicode(self.myAlarm.returnZoneNames()))
+                    interrupt = self.myAlarm.testForEvents(0, 1, 0)
+                    #self.sleep(1)
+                    if interrupt == 1:
+                        interruptCountdown = 5
+                        interrupt = 0
+                        for x in range(0, interruptCountdown):
+                            if x % 5 == 0:
+                                self.logger.info("Delay remaining: " + str(interruptCountdown - x) + " seconds")
+                            t.sleep(1)
+                    if t.time() > updatemaindevice:
+                        self.updatemainDevice()
+                        updatemaindevice = t.time()+30
+                    self.sleep(0.05)
 
-                interrupt = self.myAlarm.testForEvents(0, 1, 0)
-                #self.sleep(1)
-                if interrupt == 1:
-                    interruptCountdown = 5
-                    interrupt = 0
-                    for x in range(0, interruptCountdown):
-                        if x % 5 == 0:
-                            self.logger.info("Delay remaining: " + str(interruptCountdown - x) + " seconds")
-                        t.sleep(1)
+            self.logger.info("Error occured.  Reconnecting.")
+            self.sleep(5)
 
-                if t.time() > updatemaindevice:
-                    self.updatemainDevice()
-                    updatemaindevice = t.time()+20
-
-            self.sleep(0.5)
 
         except self.StopThread:
             self.debugLog(u'Restarting/or error. Stopping thread.')
             pass
 
+        except Exception  as e:
+            self.logger.exception("Main RunConcurrent error")
+            self.connected = False
+            self.socket.close()
+
     def connect_ip150socket(self,address, port):
 
         try:
-            self.logger.info( "trying to connect %s" % address)
-            self.logger.info("Connecting to %s" % address)
+            self.logger.info( "Trying to connect %s" % address)
+            #self.logger.info("Connecting to %s" % address)
             s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             s.settimeout(2)
             s.connect((address, int(port)))
-            self.logger.info("Connected")
+            self.logger.info("Socket for IP150 communication is Connected")
             self.connected = True
+
+
         except Exception, e:
             self.logger.error("Error connecting to IP module (exiting): " + repr(e))
-            self.logger.exception( "error connecting")
+            self.logger.debug( "Error connecting"+unicode(e.message))
             self.connected = False
+
 
         return s
 
@@ -219,7 +256,7 @@ class Plugin(indigo.PluginBase):
         return (True, valuesDict)
 
     def deviceStartComm(self, device):
-        self.logger.info(u"deviceStartComm called for " + device.name)
+        self.logger.debug(u"deviceStartComm called for " + device.name)
         device.stateListOrDisplayStateIdChanged()
         if device.deviceTypeId == 'ParadoxMain':
             device.updateStateOnServer('deviceIsOnline', value=True)
@@ -267,7 +304,7 @@ class Plugin(indigo.PluginBase):
     ## Motion Detected
 
     def zoneMotionFound(self, zoneNumber, status):
-        if self.debug1:
+        if self.debug3:
             self.logger.debug("zoneMotionFound for zone:"+str(zoneNumber)+" and status:"+str(status))
         for dev in indigo.devices.itervalues(filter="self"):
             if dev.deviceTypeId == "paradoxalarmMotion":
@@ -276,20 +313,26 @@ class Plugin(indigo.PluginBase):
                     if int(dev.pluginProps['zonenumber']) == int(zoneNumber):
                         if status == 0:
                             dev.updateStateOnServer(key="onOffState", value=False)
+                            #self.triggerCheck(dev,"motion")
                         elif status ==1:
                             dev.updateStateOnServer(key="onOffState", value=True)
+                            self.triggerCheck(dev,"motion")
 
-    def partitionstatusChange(self, partition, status):
+    def partitionstatusChange(self, status):
         if self.debug1:
-            self.logger.debug("partitionstatusChange for zone:"+str(partition)+" and status:"+str(status))
-        for dev in indigo.devices.itervalues(filter="self"):
-            if dev.deviceTypeId == "ParadoxMain":
-                if dev.enabled:
-                    #self.logger.error("zonenumber dev pluginprops:."+str(dev.pluginProps['zonenumber']))
-                    if int(dev.pluginProps['zonePartition']) == int(partition):
-                        dev.updateStateOnServer(key="alarmState", value=status)
+            self.logger.debug("partitionstatusChange status:"+str(status))
+        dev = next(indigo.devices.itervalues(filter="self.ParadoxMain"))
+        # return first paradoxmain device only
+        # should be two but if is will be problem.
 
-
+        idofevent = int(status)
+        event,nameofevent = self.eventmap.getEventDescription(2, idofevent)
+        self.logger.debug("Name of Event: "+str(nameofevent))
+        self.triggerCheck(dev,"partitionstatuschange",0,idofevent)
+        dev.updateStateOnServer(key="alarmState", value=nameofevent)
+        self.logger.debug("Partition Status Change/Event is:"+unicode(nameofevent))
+        ## message[7] always 2
+        ## trigger check for all _partition status
 
     def validatePrefsConfigUi(self, valuesDict):
 
@@ -364,11 +407,19 @@ class Plugin(indigo.PluginBase):
 
         return endArray
 
+    def paritionstatusList(self, filter='', valuesDict=None, typeId="", targetId=0):
+        endArray = []
+        subevent =""
+        partitionstatus = self.eventmap.getAllpartitionStatus()
+        for key,value in partitionstatus.items():
+            self.logger.debug("Key/SubEvent:"+unicode(key)+":"+unicode(value))
+            endArray.append((str(key), value))
+        return endArray
+
     def toggleDebugEnabled(self):
         """
         Toggle debug on/off.
         """
-
         self.debugLog(u"toggleDebugEnabled() method called.")
         if self.logLevel == logging.INFO:
              self.logLevel = logging.DEBUG
@@ -383,6 +434,8 @@ class Plugin(indigo.PluginBase):
         self.pluginPrefs[u"logLevel"] = self.logLevel
         return
 
+## Triggers
+
     def triggerStartProcessing(self, trigger):
         self.logger.debug("Adding Trigger %s (%d) - %s" % (trigger.name, trigger.id, trigger.pluginTypeId))
         assert trigger.id not in self.triggers
@@ -393,22 +446,31 @@ class Plugin(indigo.PluginBase):
         assert trigger.id in self.triggers
         del self.triggers[trigger.id]
 
-    def triggerCheck(self, device):
+    def triggerCheck(self, device, event, partition=0, idofevent=0):
         try:
-
             for triggerId, trigger in sorted(self.triggers.iteritems()):
                 self.logger.debug("Checking Trigger %s (%s), Type: %s" % (trigger.name, trigger.id, trigger.pluginTypeId))
 
-                if trigger.pluginProps["deviceID"] != str(device.id):
-                    self.logger.debug("\t\tSkipping Trigger %s (%s), wrong device: %s" % (trigger.name, trigger.id, device.id))
-                else:
-                    if trigger.pluginTypeId == "motion":
-                        self.logger.debug("\tExecuting Trigger %s (%d)" % (trigger.name, trigger.id))
+                if trigger.pluginTypeId=="partitionstatuschange" and event=="partitionstatuschange":
+                    #self.logger.error("Trigger paritionStatusChange Found: Idofevent:"+unicode(idofevent))
+                    #self.logger.error(unicode(trigger))
+                    if str(idofevent) in trigger.pluginProps["paritionstatus"]:
+                        self.logger.debug("Trigger being run: idofevent: " + unicode(idofevent) + " event: " + unicode(event) )
                         indigo.trigger.execute(trigger)
 
-                    else:
-                        self.logger.debug("\tUnknown Trigger Type %s (%d), %s" % (trigger.name, trigger.id, trigger.pluginTypeId))
+                if trigger.pluginTypeId=="motion" and event=="motion":
+                    if trigger.pluginProps["deviceID"] == str(device.id):
+                        self.logger.debug("\tExecuting Trigger %s (%d)" % (trigger.name, trigger.id))
+                        indigo.trigger.execute(trigger)
+                if trigger.pluginTypeId=="alarmstatus" and event =="alarmstatus":
+                    if trigger.pluginProps["zonePartition"] == int(partition):
+                        if trigger.pluginProps["alarmstate"] == trigger.pluginProps["deviceID"]:
+                            self.logger.debug("\tExecuting Trigger %s (%d)" % (trigger.name, trigger.id))
+                            indigo.trigger.execute(trigger)
+
+                    #self.logger.debug("\tUnknown Trigger Type %s (%d), %s" % (trigger.name, trigger.id, trigger.pluginTypeId))
             return
+
         except Exception as error:
             self.errorLog(u"Error Trigger. Please check settings.")
             self.errorLog(unicode(error.message))

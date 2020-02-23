@@ -251,6 +251,7 @@ class ParadoxMG5050Registers():
         return ParadoxMG5050Registers.supportedItems
 
 
+
 """
 MG5050: This class is used for reporting events. The generic names for grouped items will be
 updated if a corresponding register location is given in the Registers class
@@ -833,6 +834,11 @@ class ParadoxMG5050EventMap():
     @staticmethod
     def getAllpartitionLabel():
         return ParadoxMG5050EventMap._partitionLabel
+
+    @staticmethod
+    def getAllpartitionStatus():
+        return ParadoxMG5050EventMap._partitionStatus
+
 
     @staticmethod
     def setbusModuleLabel(number, value):

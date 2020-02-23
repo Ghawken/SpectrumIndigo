@@ -1,0 +1,4 @@
+Changelog
+
+Add ability to trigger on any partition status change
+Zone Motion
