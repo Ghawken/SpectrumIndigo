@@ -48,7 +48,7 @@ The plugin captures a lot of Alarm information and additionally triggers on it a
 
 ![](https://github.com/Ghawken/SpectrumIndigo/blob/master/ParadoxAlarm.indigoPlugin/Contents/Resources/EventBellStatus.png?raw=true)
 
-![](https://github.com/Ghawken/SpectrumIndigo/blob/master/ParadoxAlarm.indigoPlugin/Contents/Resources/EventPartitionStatus.png?raw=true)
+![](https://github.com/Ghawken/SpectrumIndigo/blob/master/ParadoxAlarm.indigoPlugin/Contents/Resources/EventPartitionStatusChange.png?raw=true)
 
 ![](https://github.com/Ghawken/SpectrumIndigo/blob/master/ParadoxAlarm.indigoPlugin/Contents/Resources/EventTroubleDetected.png?raw=true)
 
