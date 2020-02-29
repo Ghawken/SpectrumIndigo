@@ -5,6 +5,7 @@ import sys
 import struct
 import json
 import logging
+import binascii
 
 class paradox:
     loggedin = 0
@@ -118,7 +119,7 @@ class paradox:
         else:
             self.plugin.connected = False
             loggedin = 0
-            self.logger.debug(u"Login request unsuccessful, panel returned:"+unicode(reply))
+            self.logger.debug(u"Login request unsuccessful")
             return
 
         header = list(header)
@@ -478,9 +479,13 @@ class paradox:
                                 except Exception as ezone:
                                         self.logger.debug("Exception checking/updating zone names: {}".format(ezone.message))
 
+                # these checks for triggers, still run other zone checks etc below as elif
                                 if ord(message[7])==2:  ## this is _partitionstatus change, check trigger and then do the other if/elif's
                                     self.plugin.partitionstatusChange(ord(message[8]))
-
+                                elif ord(message[7])==3:  ## this is Bell change, check trigger and then do the other if/elif's
+                                    self.plugin.bellstatusChange(ord(message[8]))
+                                elif ord(message[7]) == 44:
+                                    self.plugin.newtroublestatusChange(ord(message[8]))
                                 # zone status messages Paradox/Zone/ZoneName 0 for close, 1 for open
                                 if ord(message[7]) == 0:
                                     #Zone state off
@@ -634,7 +639,6 @@ class paradox:
     def readDataRaw(self, request='', Debug_Mode=2):
 
         # self.testForEvents()                # First check for any pending events received
-
         tries = self.retries
         Error_Delay = 5
         while tries > 0:
@@ -644,7 +648,7 @@ class paradox:
                 #if len(request) == 0: # heartbeart
                 #    self.logger.debug("Publishing heartbeat event")
                 #    #client.publish(Topic_Publish_Heartbeat,"ON")
-
+                #self.logger.error("Socket Timeout ="+unicode(self.comms.getdefaulttimeout()))
                 self.sendData(request)
                 inc_data = self.comms.recv(1024)
                 if Debug_Mode >= 2:
@@ -678,7 +682,7 @@ class paradox:
                     self.plugin.connected = False
                 else:
                     self.logger.debug("After error, continuing %d attempts left" % tries)
-                    self.sleep(5)
+                    time.sleep(5)
                     return ''
             else:
                 if len(inc_data) == 0:
@@ -690,7 +694,80 @@ class paradox:
                         self.plugin.connected = False
                     return ''
                 else:
+                    #self.logger.error("Start:" + hex(ord(inc_data[0])))
+                    if hex(ord(inc_data[0])) != hex(0xaa):
+                        if len(inc_data) > 0:
+                            self.logger.debug('Dangling data in the receive buffer: %s' % binascii.hexlify(inc_data))
+                        inc_data = ''
                     return inc_data
+
+    # def readDataRawControl(self, request='', Debug_Mode=2):
+    #
+    #     # self.testForEvents()                # First check for any pending events received
+    #     tries = self.retries
+    #     Error_Delay = 5
+    #     while tries > 0:
+    #         try:
+    #             if Debug_Mode >= 2:
+    #                 self.logger.debug(str(len(request)) + "->   " + " ".join(hex(ord(i)) for i in request))
+    #             # if len(request) == 0: # heartbeart
+    #             #    self.logger.debug("Publishing heartbeat event")
+    #             #    #client.publish(Topic_Publish_Heartbeat,"ON")
+    #             # self.logger.error("Socket Timeout ="+unicode(self.comms.getdefaulttimeout()))
+    #             self.sendData(request)
+    #             inc_data = self.comms.recv(1024)
+    #             if Debug_Mode >= 2:
+    #                 self.logger.debug(str(len(inc_data)) + "<-   " + " ".join(hex(ord(i)) for i in inc_data))
+    #             tries = 0
+    #
+    #         except socket.timeout, e:
+    #             err = e.args[0]
+    #             if err == 'timed out':
+    #                 self.logger.debug("Timed out error, no retry -<-- could fix this" + repr(e))
+    #                 # this seems to be where it goes normally while waiting for traffic.
+    #                 tries = 0
+    #
+    #                 # self.plugin.connected = False
+    #                 return ''
+    #                 # sleep(1)
+    #                 # #self.logger.debug 'Receive timed out, ret'
+    #                 # continue
+    #             else:
+    #                 self.logger.debug(
+    #                     "Error reading data from IP module, retrying again... (" + str(tries) + "): " + repr(e))
+    #                 tries -= 1
+    #                 time.sleep(Error_Delay)
+    #                 sys.exc_clear()
+    #                 pass
+    #         except socket.error, e:
+    #             self.logger.debug("Unknown error on socket connection, retrying (%d) ... %s " % (tries, repr(e)))
+    #             tries -= 1
+    #             time.sleep(Error_Delay)
+    #             if tries == 0:
+    #                 self.logger.debug("Failure, disconnected.")
+    #                 self.plugin.connected = False
+    #             else:
+    #                 self.logger.debug("After error, continuing %d attempts left" % tries)
+    #                 time.sleep(5)
+    #                 return ''
+    #         else:
+    #             if len(inc_data) == 0:
+    #                 tries -= 1
+    #                 self.logger.debug('Socket connection closed by remote host: %d' % tries)
+    #                 time.sleep(Error_Delay)
+    #                 if tries == 0:
+    #                     self.logger.debug('Failure, disconnecting')
+    #                     self.plugin.connected = False
+    #                 return ''
+    #             else:
+    #                 self.logger.error("Start:"+hex(ord(inc_data[0])))
+    #                 if hex(ord(inc_data[0])) != hex(0xaa):
+    #                     if len(inc_data) > 0:
+    #                         self.logger.error('Dangling data in the receive buffer: %s' % binascii.hexlify(inc_data))
+    #                     inc_data = ''
+    #
+    #                 return inc_data
+
 
     def readDataStruct37(self, inputData='', Debug_Mode=0):  # Sends data, read input data and return the Header and Message
 
@@ -705,21 +782,56 @@ class paradox:
 
     def controlGenericOutput(self, mapping_dict, output, state, Debug_Mode=0):
 
-        registers = mapping_dict
+        try:
+            registers = mapping_dict
+            header = registers["Header"]
+            sending = True
+            retries =0
+            message = registers[output][state]
+            assert isinstance(message, basestring), "Message to be sent is not a string: %r" % message
+            message = message.ljust(36, '\x00')
+            # #self.logger.debug " ".join(hex(ord(i)) for i in message)
+            while sending == True and retries <= 10:
+                self.logger.debug("Sending generic Output Control: Output: " + str(output) + ", State: " + state)
+                reply = self.readDataRaw(header + self.format37ByteMessage(message), Debug_Mode)
+                if reply != '':
+                    # self.logger.debug("Reply Obtained:  Need to check has actioned otherwise repeat...."+unicode(message))
+                    data = reply[16:]
+                    messagesent = registers[output][state]
+                    self.logger.debug(str(len(reply)) + "Reply:" + " ".join(hex(ord(i)) for i in reply))
+                    self.logger.debug("Data 0:" + unicode(hex(ord(data[0]))))
+                    self.logger.debug("messagesent 2:" + unicode(hex(ord(messagesent[2]))))
+                    self.logger.debug(
+                        "Data 2:" + unicode(hex(ord(data[2]))))  ## is the command sent, if not returned then error.
+                    # self.logger.error("Data 3:" + unicode(hex(ord(data[3]))))
+                    commandtobesent = ord(messagesent[2])
+                    replycommand = ord(data[2])
+                    if commandtobesent != replycommand:
+                        self.logger.debug(
+                            u'Command returned, is not that sent ; resending/retrying command.  Retry ' + unicode(
+                                retries))
+                        sending = True
+                        retries = retries + 1
+                        time.sleep(2)
+                    else:
+                        sending = False
+                        self.logger.info(u'Command successfully sent.')
+                        return
 
-        header = registers["Header"]
+                else:
+                    self.logger.info('Error sending command.  Retry ' + unicode(retries))
+                    sending = True
+                    retries = retries + 1
+                    time.sleep(2)
 
-        if Debug_Mode >= 1:
-            self.logger.debug( "Sending generic Output Control: Output: " + str(output) + ", State: " + state)
+            self.logger.info(u'Command failed despite retries... aborting.')
+            self.plugin.failedCommand(0, state)
+        except:
+            sending = False
+            self.logger.exception(u"Error Sending Command.")
 
-        message = registers[output][state]
+            return
 
-        assert isinstance(message, basestring), "Message to be sent is not a string: %r" % message
-        message = message.ljust(36, '\x00')
-
-        # #self.logger.debug " ".join(hex(ord(i)) for i in message)
-
-        reply = self.readDataRaw(header + self.format37ByteMessage(message), Debug_Mode)
 
         return
 
@@ -737,49 +849,60 @@ class paradox:
         return
 
     def controlGenericAlarm(self, mapping_dict, partition, state, Debug_Mode):
-        registers = mapping_dict
+        try:
+            registers = mapping_dict
+            header = registers["Header"]
 
-        header = registers["Header"]
-
-        self.logger.debug("Sending generic Alarm Control: Partition: " + str(partition) + ", State: " + state)
-        sending = True
-        retries =0
-        message = registers[partition][state]
-
-        assert isinstance(message, basestring), "Message to be sent is not a string: %r" % message
-        message = message.ljust(36, '\x00')
-
-        # #self.logger.debug " ".join(hex(ord(i)) for i in message)
-
-        while sending == True and retries <=3:
             self.logger.debug("Sending generic Alarm Control: Partition: " + str(partition) + ", State: " + state)
-            reply = self.readDataRaw(header + self.format37ByteMessage(message), Debug_Mode)
+            sending = True
+            retries =0
+            message = registers[partition][state]
 
-            #self.logger.debug("Reply Obtained:  Need to check has actioned otherwise repeat...."+unicode(message))
+            assert isinstance(message, basestring), "Message to be sent is not a string: %r" % message
+            message = message.ljust(36, '\x00')
 
-            data = reply[16:]
-            messagesent = registers[partition][state]
-            #self.logger.debug(str(len(reply)) + "Reply:" + " ".join(hex(ord(i)) for i in reply))
-            self.logger.debug("Data 0:"+unicode(hex(ord(data[0]))))
-            self.logger.debug("messagesent 2:" + unicode(hex(ord(messagesent[2]))))
-            self.logger.debug("Data 2:" + unicode(hex(ord(data[2]))))  ## is the command sent, if not returned then error.
-            #self.logger.error("Data 3:" + unicode(hex(ord(data[3]))))
-            commandtobesent = ord(messagesent[2])
-            replycommand = ord(data[2])
+            # #self.logger.debug " ".join(hex(ord(i)) for i in message)
 
-            if commandtobesent != replycommand:
-                self.logger.info(u'Command returned, is not that sent ; resending/retrying command.  Retry '+unicode(retries))
-                sending= True
-                retries = retries +1
-                time.sleep(1)
+            while sending == True and retries <=3:
+                self.logger.debug("Sending generic Alarm Control: Partition: " + str(partition) + ", State: " + state)
+                reply = self.readDataRaw(header + self.format37ByteMessage(message), Debug_Mode)
+                time.sleep(0.5)
+                if reply !='':
+                    #self.logger.debug("Reply Obtained:  Need to check has actioned otherwise repeat...."+unicode(message))
+                    data = reply[16:]
+                    messagesent = registers[partition][state]
+                    self.logger.debug(str(len(reply)) + "Reply:" + " ".join(hex(ord(i)) for i in reply))
+                    self.logger.debug("Data 0:"+unicode(hex(ord(data[0]))))
+                    self.logger.debug("messagesent 2:" + unicode(hex(ord(messagesent[2]))))
+                    self.logger.debug("Data 2:" + unicode(hex(ord(data[2]))))  ## is the command sent, if not returned then error.
+                    #self.logger.error("Data 3:" + unicode(hex(ord(data[3]))))
+                    commandtobesent = ord(messagesent[2])
+                    replycommand = ord(data[2])
+                    if commandtobesent != replycommand:
+                        self.logger.info(
+                            u'Command returned, is not that sent ; resending/retrying command.  Retry ' + unicode(retries))
+                        sending = True
+                        retries = retries + 1
+                        time.sleep(2)
+                    else:
+                        sending = False
+                        self.logger.info(u'Command successfully sent.')
+                        return
 
-            else:
-                sending = False
-                self.logger.info(u'Command successfully sent.')
-                return
+                else:
+                    self.logger.info('Error sending command.  Retry ' + unicode(retries))
+                    sending = True
+                    retries = retries + 1
+                    time.sleep(2)
 
-        self.logger.info(u'Command failed despite retries... aborting.')
 
+            self.logger.info(u'Command failed despite retries... aborting.')
+            self.plugin.failedCommand(partition, state)
+        except:
+            sending = False
+            self.logger.exception(u"Error Sending Command.")
+
+            return
 
 
         return

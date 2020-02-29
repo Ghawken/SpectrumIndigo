@@ -103,6 +103,7 @@ class Plugin(indigo.PluginBase):
             self.logger.debug("Failed to load Register Map (defaulting to not update labels from alarm): %s" % repr(e))
             self.Skip_Update_Labels = 1
 
+        self.logger.info(u"{0:=^130}".format(" End Initializing New Plugin  "))
 
     def __del__(self):
 
@@ -167,6 +168,7 @@ class Plugin(indigo.PluginBase):
         Alarm_Registry_Map = "ParadoxMG5050"
         Alarm_Event_Map = "ParadoxMG5050"
         updatemaindevice = t.time() + 15
+        loginretry = 0
 
         try:
 
@@ -181,15 +183,18 @@ class Plugin(indigo.PluginBase):
                     self.myAlarm = paradox.paradox(self, self.socket, "", 0, 3, Alarm_Event_Map, Alarm_Registry_Map)
                     self.sleep(1)
                     if not self.myAlarm.login(str(self.ip150password), str(self.pcpassword), 0):
+                        loginretry = loginretry +1
                         self.logger.info(
-                            u"Failed to login & unlock to IP module, check if another app is using the port. Retrying... ")
+                            u"Failed to login & unlock to IP module, check if another app is using the port. Retrying... Attempt number: "+unicode(loginretry))
                         self.socket.close()
-                        self.sleep(20)
+                        self.sleep(int(10*loginretry))
                         self.connected = False
                     else:
                         self.logger.info("Logged into IP module successfully")
                         self.connected = True
+                        loginretry = 0
 
+                if self.connected:
                     if self.labelsdueupdate:
                         zoneNames = self.myAlarm.updateAllLabels("True", "True", 0)
                         self.labelsdueupdate = False
@@ -217,7 +222,7 @@ class Plugin(indigo.PluginBase):
                         updatemaindevice = t.time()+30
                     self.sleep(0.05)
 
-            self.logger.info("Error occured.  Reconnecting.")
+            self.logger.info("Error occurred.  Reconnecting.")
             self.sleep(5)
 
 
@@ -233,14 +238,21 @@ class Plugin(indigo.PluginBase):
     def connect_ip150socket(self,address, port):
 
         try:
+            self.socket.close()
+
+        except Exception as e:
+            self.logger.debug("Planned exception closing Socket:"+e.message)
+            pass
+
+        try:
             self.logger.info( "Trying to connect %s" % address)
             #self.logger.info("Connecting to %s" % address)
             s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            s.settimeout(2)
+            s.settimeout(5)
             s.connect((address, int(port)))
             self.logger.info("Socket for IP150 communication is Connected")
             self.connected = True
-
+            self.logger.debug("Socket Timout = "+unicode(s.gettimeout()))
 
         except Exception, e:
             self.logger.error("Error connecting to IP module (exiting): " + repr(e))
@@ -318,12 +330,20 @@ class Plugin(indigo.PluginBase):
                             dev.updateStateOnServer(key="onOffState", value=True)
                             self.triggerCheck(dev,"motion")
 
+    def failedCommand(self, partition, state):
+        if self.debug1:
+            self.logger.debug("Failed Command Partition:"+str(partition)+" and state:"+str(state))
+        dev = next(indigo.devices.itervalues(filter="self.ParadoxMain"))
+        self.triggerCheck(dev,"failedCommand",partition,state)
+
+
+
     def partitionstatusChange(self, status):
         if self.debug1:
             self.logger.debug("partitionstatusChange status:"+str(status))
         dev = next(indigo.devices.itervalues(filter="self.ParadoxMain"))
         # return first paradoxmain device only
-        # should be two but if is will be problem.
+        # should not be two but if there are will be problem.
 
         idofevent = int(status)
         event,nameofevent = self.eventmap.getEventDescription(2, idofevent)
@@ -331,6 +351,38 @@ class Plugin(indigo.PluginBase):
         self.triggerCheck(dev,"partitionstatuschange",0,idofevent)
         dev.updateStateOnServer(key="alarmState", value=nameofevent)
         self.logger.debug("Partition Status Change/Event is:"+unicode(nameofevent))
+        ## message[7] always 2
+        ## trigger check for all _partition status
+
+    def bellstatusChange(self, status):
+        if self.debug1:
+            self.logger.debug("Bell statusChange status:"+str(status))
+        dev = next(indigo.devices.itervalues(filter="self.ParadoxMain"))
+        # return first paradoxmain device only
+        # should not be two but if there are will be problem.
+        idofevent = int(status)
+        event,nameofevent = self.eventmap.getEventDescription(3, idofevent)
+        self.logger.debug("Name of Event: "+str(nameofevent))
+        self.triggerCheck(dev,"bellstatuschange",0,idofevent)
+
+        dev.updateStateOnServer(key="BellState", value=nameofevent)
+        self.logger.debug("Bell Status Change/Event is:"+unicode(nameofevent))
+        ## message[7] always 2
+        ## trigger check for all _partition status
+
+    def newtroublestatusChange(self, status):
+        if self.debug1:
+            self.logger.debug("New Trouble statusChange status:" + str(status))
+        dev = next(indigo.devices.itervalues(filter="self.ParadoxMain"))
+        # return first paradoxmain device only
+        # should not be two but if there are will be problem.
+
+        idofevent = int(status)
+        event, nameofevent = self.eventmap.getEventDescription(44, idofevent)
+        self.logger.debug("Name of Event: " + str(nameofevent))
+        self.triggerCheck(dev, "newtroublestatuschange", 0, idofevent)
+        dev.updateStateOnServer(key="TroubleState", value=nameofevent)
+        self.logger.debug("Trouble Status Change/Event is:" + unicode(nameofevent))
         ## message[7] always 2
         ## trigger check for all _partition status
 
@@ -366,28 +418,20 @@ class Plugin(indigo.PluginBase):
         The refreshData() method controls the updating of all plugin
         devices.
         """
-
         self.debugLog(u"refreshData() method called.")
-
         try:
             # Check to see if there have been any devices created.
             if indigo.devices.itervalues(filter="self"):
-
                 self.debugLog(u"Updating data...")
-
                 for dev in indigo.devices.itervalues(filter="self"):
                     self.refreshDataForDev(dev)
-
             else:
                 indigo.server.log(u"No Client devices have been created.")
-
             return True
-
         except Exception as error:
             self.errorLog(u"Error refreshing devices. Please check settings.")
             self.errorLog(unicode(error.message))
             return False
-
     ## zonelist return
 
     def zoneList(self, filter='',valuesDict=None, typeId="", targetId=0):
@@ -404,7 +448,6 @@ class Plugin(indigo.PluginBase):
             else:
                 zonename = value
             endArray.append((str(key),zonename))
-
         return endArray
 
     def paritionstatusList(self, filter='', valuesDict=None, typeId="", targetId=0):
@@ -413,8 +456,33 @@ class Plugin(indigo.PluginBase):
         partitionstatus = self.eventmap.getAllpartitionStatus()
         for key,value in partitionstatus.items():
             self.logger.debug("Key/SubEvent:"+unicode(key)+":"+unicode(value))
+            if key==99 or str(value)=='N/A':
+                continue
             endArray.append((str(key), value))
         return endArray
+
+    def bellstatusList(self, filter='', valuesDict=None, typeId="", targetId=0):
+        endArray = []
+        subevent =""
+        partitionstatus = self.eventmap.getAllbellStatus()
+        for key,value in partitionstatus.items():
+            self.logger.debug("Key/SubEvent:"+unicode(key)+":"+unicode(value))
+            if key==99 or str(value)=='N/A':
+                continue
+            endArray.append((str(key), value))
+        return endArray
+
+    def troublestatusList(self, filter='', valuesDict=None, typeId="", targetId=0):
+        endArray = []
+        subevent =""
+        partitionstatus = self.eventmap.getAllnewtroubleStatus()
+        for key,value in partitionstatus.items():
+            self.logger.debug("Key/SubEvent:"+unicode(key)+":"+unicode(value))
+            if key==99 or str(value)=='N/A':
+                continue
+            endArray.append((str(key), value))
+        return endArray
+
 
     def toggleDebugEnabled(self):
         """
@@ -433,7 +501,6 @@ class Plugin(indigo.PluginBase):
 
         self.pluginPrefs[u"logLevel"] = self.logLevel
         return
-
 ## Triggers
 
     def triggerStartProcessing(self, trigger):
@@ -457,6 +524,23 @@ class Plugin(indigo.PluginBase):
                     if str(idofevent) in trigger.pluginProps["paritionstatus"]:
                         self.logger.debug("Trigger being run: idofevent: " + unicode(idofevent) + " event: " + unicode(event) )
                         indigo.trigger.execute(trigger)
+                if trigger.pluginTypeId=="bellstatuschange" and event=="bellstatuschange":
+                    #self.logger.error("Trigger paritionStatusChange Found: Idofevent:"+unicode(idofevent))
+                    #self.logger.error(unicode(trigger))
+                    if str(idofevent) in trigger.pluginProps["bellstatus"]:
+                        self.logger.debug("Trigger being run: idofevent: " + unicode(idofevent) + " event: " + unicode(event) )
+                        indigo.trigger.execute(trigger)
+                if trigger.pluginTypeId=="newtroublestatuschange" and event=="newtroublestatuschange":
+                    #self.logger.error("Trigger paritionStatusChange Found: Idofevent:"+unicode(idofevent))
+                    #self.logger.error(unicode(trigger))
+                    if str(idofevent) in trigger.pluginProps["troublestatus"]:
+                        self.logger.debug("Trigger being run: idofevent: " + unicode(idofevent) + " event: " + unicode(event) )
+                        indigo.trigger.execute(trigger)
+                if trigger.pluginTypeId == "failedCommand" and event == "failedCommand":
+                    if trigger.pluginProps["zonePartition"] == int(partition):
+                        self.logger.debug("\tExecuting Trigger %s (%d)" % (trigger.name, trigger.id))
+                        indigo.trigger.execute(trigger)
+
 
                 if trigger.pluginTypeId=="motion" and event=="motion":
                     if trigger.pluginProps["deviceID"] == str(device.id):
@@ -482,11 +566,9 @@ class Plugin(indigo.PluginBase):
         self.logger.debug(u"controlPGM Called as Action.")
         pgm = int(action.props.get('pgm',1))
         command = action.props.get("action","OFF")
-
         #self.myAlarm.login(str(self.ip150password), str(self.pcpassword), 0)
         ##self.myAlarm.login(str(self.ip150password), str(self.pcpassword))
         self.myAlarm.controlPGM(pgm,command, 50)
-
         return
 
 
@@ -497,5 +579,4 @@ class Plugin(indigo.PluginBase):
         #self.myAlarm.login(str(self.ip150password),str(self.pcpassword))
         #self.myAlarm.login(str(self.ip150password), str(self.pcpassword), 0)
         self.myAlarm.controlAlarm(partition,command, 50)
-
         return

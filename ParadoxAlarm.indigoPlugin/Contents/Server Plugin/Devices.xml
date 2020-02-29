@@ -33,6 +33,16 @@
                 <TriggerLabel>Alarm State</TriggerLabel>
                 <ControlPageLabel>Alarm State</ControlPageLabel>
             </State>
+		 		   <State id="BellState">
+                <ValueType>String</ValueType>
+                <TriggerLabel>Bell State</TriggerLabel>
+                <ControlPageLabel>Bell State</ControlPageLabel>
+            </State>
+		 		 		   <State id="TroubleState">
+                <ValueType>String</ValueType>
+                <TriggerLabel>Trouble State</TriggerLabel>
+                <ControlPageLabel>Trouble State</ControlPageLabel>
+            </State>
 		 <State id="paneldate">
                 <ValueType>String</ValueType>
                 <TriggerLabel>Panel Reported Date</TriggerLabel>

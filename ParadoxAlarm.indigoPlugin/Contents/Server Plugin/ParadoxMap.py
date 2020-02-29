@@ -839,6 +839,13 @@ class ParadoxMG5050EventMap():
     def getAllpartitionStatus():
         return ParadoxMG5050EventMap._partitionStatus
 
+    @staticmethod
+    def getAllbellStatus():
+        return ParadoxMG5050EventMap._bellStatus
+
+    @staticmethod
+    def getAllnewtroubleStatus():
+        return ParadoxMG5050EventMap._newTrouble
 
     @staticmethod
     def setbusModuleLabel(number, value):
