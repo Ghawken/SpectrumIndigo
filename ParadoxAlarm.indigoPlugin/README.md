@@ -5,13 +5,25 @@
 For Zone status, & Control of MG5050, SP6000 Paradox Alarm systems.
 
 Compatibility:
-MG5050 V4	IP150	Fully supported using the MG5050 mappings
-SP6000	IP150	Supported using the MG5050 mappings
-SP65	?	Supported
-EVO Series Unknown...
+
+- MG5050 V4	IP150	Fully supported using the MG5050 mappings
+
+- SP6000	IP150	Supported using the MG5050 mappings
+
+- SP65	?	Supported
+
+- EVO Series Unknown... (labels apparently not working)
+
 
 Needs IP150 Model connected to Alarm System.  Like this one:
 ![](https://github.com/Ghawken/SpectrumIndigo/blob/master/ParadoxAlarm.indigoPlugin/Contents/Resources/PDX-IP150.jpg?raw=true)
+
+
+Beta plugin at the moment - Zone and Alarm control working well for myself at the moment - so may not get time to get back to it.
+Thought reasonable as fills hole to release as Beta currently and can see how others go.
+
+
+
 
 # Setup:
 
