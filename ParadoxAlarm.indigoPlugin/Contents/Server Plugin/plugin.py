@@ -173,6 +173,7 @@ class Plugin(indigo.PluginBase):
         try:
 
             while True:
+
                 if self.connected == False:
                     self.socket = self.connect_ip150socket(str(self.ipaddress), str(self.port))
                     self.sleep(1)
@@ -196,16 +197,16 @@ class Plugin(indigo.PluginBase):
 
                 if self.connected:
                     if self.labelsdueupdate:
-                        zoneNames = self.myAlarm.updateAllLabels("True", "True", 0)
+                        self.zoneNames = self.myAlarm.updateAllLabels("True", "True", 0)
                         self.labelsdueupdate = False
                     self.logger.debug(unicode(self.myAlarm.returnZoneNames()))
                     self.myAlarm.updateZoneAndAlarmStatus("True", 0)
 
                 while self.connected:
                     self.myAlarm.keepAlive(0)
-                    zoneNames = ""
+                    self.zoneNames = ""
                     if self.labelsdueupdate:
-                        zoneNames = self.myAlarm.updateAllLabels("True","True",0)
+                        self.zoneNames = self.myAlarm.updateAllLabels("True","True",0)
                         self.labelsdueupdate = False
                         self.logger.debug(unicode(self.myAlarm.returnZoneNames()))
                     interrupt = self.myAlarm.testForEvents(0, 1, 0)
@@ -234,6 +235,8 @@ class Plugin(indigo.PluginBase):
             self.logger.exception("Main RunConcurrent error")
             self.connected = False
             self.socket.close()
+            self.labelsdueupdate = True
+            self.sleep(5)
 
     def connect_ip150socket(self,address, port):
 
