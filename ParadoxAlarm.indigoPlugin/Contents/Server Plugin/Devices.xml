@@ -97,7 +97,7 @@
 			<ConfigUI>
 				<Field id="zonenumber" type="menu">
 					<Label>Zone:</Label>
-					<List class="self" filter="stuff" method="zoneList"/>
+					<List class="self" filter="" method="zoneList"/>
 				</Field>
 		</ConfigUI>
 

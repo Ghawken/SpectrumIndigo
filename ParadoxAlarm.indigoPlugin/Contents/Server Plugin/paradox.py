@@ -339,24 +339,15 @@ class paradox:
     def updateAllLabels(self, Startup_Publish_All_Info="True", Topic_Publish_Labels="True", Debug_Mode=0):
 
         for func in self.registermap.getsupportedItems():
-
-
             self.logger.debug("updateAllLabels: Reading from alarm: " + func)
-
             try:
-
                 register_dict = getattr(self.registermap, "get" + func + "Register")()
                 mapping_dict = getattr(self.eventmap, "set" + func)
-
                 total = sum(1 for x in register_dict if isinstance(x, int))
-
                 self.logger.debug("updateAllLabels: Amount of numeric items in dictionary to read: " + str(total))
-
                 header = register_dict["Header"]
                 skip_next = 0
-
                 for x in range(1, total + 1):
-
                     if skip_next == 1:
                         skip_next = 0
                         continue

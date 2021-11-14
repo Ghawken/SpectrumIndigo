@@ -169,7 +169,7 @@ class Plugin(indigo.PluginBase):
         Alarm_Event_Map = "ParadoxMG5050"
         updatemaindevice = t.time() + 15
         loginretry = 0
-
+        self.zoneNames = {}
         try:
 
             while True:
@@ -197,18 +197,18 @@ class Plugin(indigo.PluginBase):
 
                 if self.connected:
                     if self.labelsdueupdate:
-                        self.zoneNames = self.myAlarm.updateAllLabels("True", "True", 0)
+                        self.myAlarm.updateAllLabels("True", "True", 0)
                         self.labelsdueupdate = False
                     self.logger.debug(unicode(self.myAlarm.returnZoneNames()))
                     self.myAlarm.updateZoneAndAlarmStatus("True", 0)
 
                 while self.connected:
                     self.myAlarm.keepAlive(0)
-                    self.zoneNames = ""
+                    #self.zoneNames = ""
                     if self.labelsdueupdate:
-                        self.zoneNames = self.myAlarm.updateAllLabels("True","True",0)
+                        self.myAlarm.updateAllLabels("True","True",0)
                         self.labelsdueupdate = False
-                        self.logger.debug(unicode(self.myAlarm.returnZoneNames()))
+                        self.logger.debug("myAlarm.returnZoneNames"+unicode(self.myAlarm.returnZoneNames()))
                     interrupt = self.myAlarm.testForEvents(0, 1, 0)
                     #self.sleep(1)
                     if interrupt == 1:
@@ -442,6 +442,10 @@ class Plugin(indigo.PluginBase):
     def zoneList(self, filter='',valuesDict=None, typeId="", targetId=0):
         endArray = []
         x =0
+        if self.zoneNames == None:
+            self.logger.info("Please wait for initialisation of plugin and try again..")
+            self.logger.info("Should be reading zone Names...")
+            return endArray
         if len(self.zoneNames)==0:
             self.logger.info("Please wait for initialisation of plugin and try again..")
             self.logger.info("Should be reading zone Names...")
