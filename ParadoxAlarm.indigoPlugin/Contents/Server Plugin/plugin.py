@@ -223,8 +223,9 @@ class Plugin(indigo.PluginBase):
                         updatemaindevice = t.time()+30
                     self.sleep(0.05)
 
+
             self.logger.info("Error occurred.  Reconnecting.")
-            self.sleep(5)
+            self.sleep(60)
 
 
         except self.StopThread:
@@ -232,7 +233,7 @@ class Plugin(indigo.PluginBase):
             pass
 
         except Exception  as e:
-            self.logger.exception("Main RunConcurrent error")
+            self.logger.exception("Main RunConcurrent error Caught:")
             self.connected = False
             self.socket.close()
             self.labelsdueupdate = True
@@ -258,8 +259,9 @@ class Plugin(indigo.PluginBase):
             self.logger.debug("Socket Timout = "+unicode(s.gettimeout()))
 
         except Exception, e:
-            self.logger.error("Error connecting to IP module (exiting): " + repr(e))
+            self.logger.debug("Error connecting to IP module (exiting): " + repr(e))
             self.logger.debug( "Error connecting"+unicode(e.message))
+            self.sleep(60)
             self.connected = False
 
 
