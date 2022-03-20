@@ -50,20 +50,20 @@ class paradox:
         try:
             mod = __import__("ParadoxMap", fromlist=[self.alarmeventmap + "EventMap"])
             self.eventmap = getattr(mod, self.alarmeventmap + "EventMap")
-        except Exception, e:
+        except Exception as e:
             self.logger.debug("Failed to load Event Map: %s " % repr(e))
             self.logger.debug("Defaulting to MG5050 Event Map...")
             try:
                 mod = __import__("ParadoxMap", fromlist=["ParadoxMG5050EventMap"])
                 self.eventmap = getattr(mod, "ParadoxMG5050EventMap")
-            except Exception, e:
+            except Exception as e:
                 self.logger.debug("Failed to load Event Map (exiting): %s" % repr(e))
                 sys.exit()
 
         try:
             mod = __import__("ParadoxMap", fromlist=[self.alarmregmap + "Registers"])
             self.registermap = getattr(mod, self.alarmregmap + "Registers")
-        except Exception, e:
+        except Exception as e:
             self.logger.debug("Failed to load Register Map (defaulting to not update labels from alarm): %s" % repr(e))
             self.Skip_Update_Labels = 1
 
@@ -90,29 +90,29 @@ class paradox:
         # 16byte [or multiple] payloading being the password
         self.logger.debug("Logging into alarm system...")
 
-        header = "\xaa"  # First construct the 16 byte header, starting with 0xaa
+        header = b"\xaa"  # First construct the 16 byte header, starting with 0xaa
 
         header += bytes(bytearray([len(password)]))  # Add the length of the password which is appended after the header
-        header += "\x00\x03"  # No idea what this is
+        header += b"\x00\x03"  # No idea what this is
 
         if self.encrypted == 0:  # Encryption flag
-            header += "\x08"  # Encryption off [default for now]
+            header += b"\x08"  # Encryption off [default for now]
         else:
-            header += "\x09"  # Encryption on
+            header += b"\x09"  # Encryption on
 
-        header += "\xf0\x00\x0a"  # No idea what this is, although the fist byte seems like a sequence number
+        header += b"\xf0\x00\x0a"  # No idea what this is, although the fist byte seems like a sequence number
         # header += "\xf0\x00\x0e\x00\x01"    # iParadox initial request
 
-        header = header.ljust(16, '\xee')  # The remained of the 16B header is filled with 0xee
+        header = header.ljust(16, b'\xee')  # The remained of the 16B header is filled with 0xee
 
         message = password  # Add the password as the start of the payload
 
         # FIXME: Add support for passwords longer than 16 characters
-        message = message.ljust(16, '\xee')  # The remainder of the 16B payload is filled with 0xee
+        message = message.ljust(16, b'\xee')  # The remainder of the 16B payload is filled with 0xee
 
         reply = self.readDataRaw(header + message, Debug_Mode)  # Send message to the alarm panel and read the reply
 
-        if len(reply)>0 and reply[4] == '\x38':
+        if len(reply)>0 and reply[4] == b'\x38':
             self.logger.debug("Login to alarm panel successful")
             self.plugin.connected = True
             loggedin = 1
@@ -124,22 +124,22 @@ class paradox:
 
         header = list(header)
 
-        header[1] = '\x00'
-        header[5] = '\xf2'
+        header[1] = b'\x00'
+        header[5] = b'\xf2'
         header2 = "".join(header)
         self.readDataRaw(header2, Debug_Mode)
 
-        header[5] = '\xf3'
+        header[5] = b'\xf3'
         header2 = "".join(header)
         reply = self.readDataRaw(header2, Debug_Mode)
 
         reply = list(reply)  # Send "waiting" header until reply is at least 48 bytes in length indicating ready state
 
-        header[1] = '\x25'
-        header[3] = '\x04'
-        header[5] = '\x00'
+        header[1] = b'\x25'
+        header[3] = b'\x04'
+        header[5] = b'\x00'
         header2 = "".join(header)
-        message = '\x72\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
+        message = b'\x72\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
         message = self.format37ByteMessage(message)
         reply = self.readDataRaw(header2 + message, Debug_Mode)
 
@@ -390,7 +390,7 @@ class paradox:
                     if Debug_Mode >= 1:
                         self.logger.debug("Labels detected for " + func + ":")
                         self.logger.debug(completed_dict)
-                except Exception, e:
+                except Exception as e:
                     self.logger.debug("Failed to load supported function's completed mappings after updating: %s" % repr(e))
 
 
@@ -415,7 +415,7 @@ class paradox:
                 #self.logger.debug self.zoneNames
 
 
-            except Exception, e:
+            except Exception as e:
                 self.logger.debug("Failed to load supported function's mapping: %s" % repr(e))
 
         return
@@ -456,7 +456,7 @@ class paradox:
 
                                 reply = str(ord(message[7])) + "=Event:" + event + " & " + str(ord(message[8]))+"=SubEvent:" + subevent
 
-                                self.logger.debug(unicode(reply))
+                                self.logger.debug(str(reply))
                                 try:
                                     if (ord(message[7]) == 0 or ord(message[7]) ==1) and (self.zoneNames is not None and len(self.zoneNames) > 0):
                                         #self.logger.debug("Message is a 1 or 0, and self.Zonenames not empty")
@@ -639,14 +639,14 @@ class paradox:
                 #if len(request) == 0: # heartbeart
                 #    self.logger.debug("Publishing heartbeat event")
                 #    #client.publish(Topic_Publish_Heartbeat,"ON")
-                #self.logger.error("Socket Timeout ="+unicode(self.comms.getdefaulttimeout()))
+                #self.logger.error("Socket Timeout ="+str(self.comms.getdefaulttimeout()))
                 self.sendData(request)
                 inc_data = self.comms.recv(1024)
                 if Debug_Mode >= 2:
                     self.logger.debug( str(len(inc_data)) + "<-   " + " ".join(hex(ord(i)) for i in inc_data))
                 tries = 0
 
-            except socket.timeout, e:
+            except socket.timeout as e:
                 err = e.args[0]
                 if err == 'timed out':
                     self.logger.debug("Timed out error, no retry -<-- could fix this" + repr(e))
@@ -664,7 +664,7 @@ class paradox:
                     time.sleep(Error_Delay)
                     sys.exc_clear()
                     pass
-            except socket.error, e:
+            except socket.error as e:
                 self.logger.debug("Unknown error on socket connection, retrying (%d) ... %s " % (tries, repr(e)))
                 tries -= 1
                 time.sleep(Error_Delay)
@@ -704,7 +704,7 @@ class paradox:
     #             # if len(request) == 0: # heartbeart
     #             #    self.logger.debug("Publishing heartbeat event")
     #             #    #client.publish(Topic_Publish_Heartbeat,"ON")
-    #             # self.logger.error("Socket Timeout ="+unicode(self.comms.getdefaulttimeout()))
+    #             # self.logger.error("Socket Timeout ="+str(self.comms.getdefaulttimeout()))
     #             self.sendData(request)
     #             inc_data = self.comms.recv(1024)
     #             if Debug_Mode >= 2:
@@ -786,20 +786,20 @@ class paradox:
                 self.logger.debug("Sending generic Output Control: Output: " + str(output) + ", State: " + state)
                 reply = self.readDataRaw(header + self.format37ByteMessage(message), Debug_Mode)
                 if reply != '':
-                    # self.logger.debug("Reply Obtained:  Need to check has actioned otherwise repeat...."+unicode(message))
+                    # self.logger.debug("Reply Obtained:  Need to check has actioned otherwise repeat...."+str(message))
                     data = reply[16:]
                     messagesent = registers[output][state]
                     self.logger.debug(str(len(reply)) + "Reply:" + " ".join(hex(ord(i)) for i in reply))
-                    self.logger.debug("Data 0:" + unicode(hex(ord(data[0]))))
-                    self.logger.debug("messagesent 2:" + unicode(hex(ord(messagesent[2]))))
+                    self.logger.debug("Data 0:" + str(hex(ord(data[0]))))
+                    self.logger.debug("messagesent 2:" + str(hex(ord(messagesent[2]))))
                     self.logger.debug(
-                        "Data 2:" + unicode(hex(ord(data[2]))))  ## is the command sent, if not returned then error.
-                    # self.logger.error("Data 3:" + unicode(hex(ord(data[3]))))
+                        "Data 2:" + str(hex(ord(data[2]))))  ## is the command sent, if not returned then error.
+                    # self.logger.error("Data 3:" + str(hex(ord(data[3]))))
                     commandtobesent = ord(messagesent[2])
                     replycommand = ord(data[2])
                     if commandtobesent != replycommand:
                         self.logger.debug(
-                            u'Command returned, is not that sent ; resending/retrying command.  Retry ' + unicode(
+                            u'Command returned, is not that sent ; resending/retrying command.  Retry ' + str(
                                 retries))
                         sending = True
                         retries = retries + 1
@@ -810,7 +810,7 @@ class paradox:
                         return
 
                 else:
-                    self.logger.info('Error sending command.  Retry ' + unicode(retries))
+                    self.logger.info('Error sending command.  Retry ' + str(retries))
                     sending = True
                     retries = retries + 1
                     time.sleep(2)
@@ -859,19 +859,19 @@ class paradox:
                 reply = self.readDataRaw(header + self.format37ByteMessage(message), Debug_Mode)
                 time.sleep(0.5)
                 if reply !='':
-                    #self.logger.debug("Reply Obtained:  Need to check has actioned otherwise repeat...."+unicode(message))
+                    #self.logger.debug("Reply Obtained:  Need to check has actioned otherwise repeat...."+str(message))
                     data = reply[16:]
                     messagesent = registers[partition][state]
                     self.logger.debug(str(len(reply)) + "Reply:" + " ".join(hex(ord(i)) for i in reply))
-                    self.logger.debug("Data 0:"+unicode(hex(ord(data[0]))))
-                    self.logger.debug("messagesent 2:" + unicode(hex(ord(messagesent[2]))))
-                    self.logger.debug("Data 2:" + unicode(hex(ord(data[2]))))  ## is the command sent, if not returned then error.
-                    #self.logger.error("Data 3:" + unicode(hex(ord(data[3]))))
+                    self.logger.debug("Data 0:"+str(hex(ord(data[0]))))
+                    self.logger.debug("messagesent 2:" + str(hex(ord(messagesent[2]))))
+                    self.logger.debug("Data 2:" + str(hex(ord(data[2]))))  ## is the command sent, if not returned then error.
+                    #self.logger.error("Data 3:" + str(hex(ord(data[3]))))
                     commandtobesent = ord(messagesent[2])
                     replycommand = ord(data[2])
                     if commandtobesent != replycommand:
                         self.logger.info(
-                            u'Command returned, is not that sent ; resending/retrying command.  Retry ' + unicode(retries))
+                            u'Command returned, is not that sent ; resending/retrying command.  Retry ' + str(retries))
                         sending = True
                         retries = retries + 1
                         time.sleep(2)
@@ -881,7 +881,7 @@ class paradox:
                         return
 
                 else:
-                    self.logger.info('Error sending command.  Retry ' + unicode(retries))
+                    self.logger.info('Error sending command.  Retry ' + str(retries))
                     sending = True
                     retries = retries + 1
                     time.sleep(2)

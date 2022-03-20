@@ -6,11 +6,11 @@ Author: GlennNZ
 
 """
 
-import datetime
+#import datetime
 import time as t
-import urllib2
-import os
-import shutil
+#import urllib2
+#import os
+#import shutil
 import logging
 import socket
 import sys
@@ -87,19 +87,19 @@ class Plugin(indigo.PluginBase):
         try:
             mod = __import__("ParadoxMap", fromlist=[self.alarmeventmap + "EventMap"])
             self.eventmap = getattr(mod, self.alarmeventmap + "EventMap")
-        except Exception, e:
+        except Exception as e:
             self.logger.debug("Failed to load Event Map: %s " % repr(e))
             self.logger.debug("Defaulting to MG5050 Event Map...")
             try:
                 mod = __import__("ParadoxMap", fromlist=["ParadoxMG5050EventMap"])
                 self.eventmap = getattr(mod, "ParadoxMG5050EventMap")
-            except Exception, e:
+            except Exception as e:
                 self.logger.exception("Failed to load Event Map (exiting): %s" % repr(e))
 
         try:
             mod = __import__("ParadoxMap", fromlist=[self.alarmregmap + "Registers"])
             self.registermap = getattr(mod, self.alarmregmap + "Registers")
-        except Exception, e:
+        except Exception as e:
             self.logger.debug("Failed to load Register Map (defaulting to not update labels from alarm): %s" % repr(e))
             self.Skip_Update_Labels = 1
 
@@ -120,7 +120,7 @@ class Plugin(indigo.PluginBase):
         if not userCancelled:
             self.logLevel = int(valuesDict.get("showDebugLevel", '5'))
             self.ipaddress = valuesDict.get('ipaddress', '')
-            # self.logger.error(unicode(valuesDict))
+            # self.logger.error(str(valuesDict))
             self.port = valuesDict.get('port', False)
             self.ip150password = valuesDict.get('ip150password', 'paradox')
             self.pcpassword = valuesDict.get('superCharge', 1234)
@@ -170,6 +170,7 @@ class Plugin(indigo.PluginBase):
         updatemaindevice = t.time() + 15
         loginretry = 0
         self.zoneNames = {}
+        self.socket = None
         try:
 
             while True:
@@ -186,7 +187,7 @@ class Plugin(indigo.PluginBase):
                     if not self.myAlarm.login(str(self.ip150password), str(self.pcpassword), 0):
                         loginretry = loginretry +1
                         self.logger.info(
-                            u"Failed to login & unlock to IP module, check if another app is using the port. Retrying... Attempt number: "+unicode(loginretry))
+                            u"Failed to login & unlock to IP module, check if another app is using the port. Retrying... Attempt number: "+str(loginretry))
                         self.socket.close()
                         self.sleep(int(10*loginretry))
                         self.connected = False
@@ -199,7 +200,7 @@ class Plugin(indigo.PluginBase):
                     if self.labelsdueupdate:
                         self.myAlarm.updateAllLabels("True", "True", 0)
                         self.labelsdueupdate = False
-                    self.logger.debug(unicode(self.myAlarm.returnZoneNames()))
+                    self.logger.debug(str(self.myAlarm.returnZoneNames()))
                     self.myAlarm.updateZoneAndAlarmStatus("True", 0)
 
                 while self.connected:
@@ -208,7 +209,7 @@ class Plugin(indigo.PluginBase):
                     if self.labelsdueupdate:
                         self.myAlarm.updateAllLabels("True","True",0)
                         self.labelsdueupdate = False
-                        self.logger.debug("myAlarm.returnZoneNames"+unicode(self.myAlarm.returnZoneNames()))
+                        self.logger.debug("myAlarm.returnZoneNames"+str(self.myAlarm.returnZoneNames()))
                     interrupt = self.myAlarm.testForEvents(0, 1, 0)
                     #self.sleep(1)
                     if interrupt == 1:
@@ -232,7 +233,7 @@ class Plugin(indigo.PluginBase):
             self.debugLog(u'Restarting/or error. Stopping thread.')
             pass
 
-        except Exception  as e:
+        except Exception as e:
             self.logger.exception("Main RunConcurrent error Caught:")
             self.connected = False
             self.socket.close()
@@ -245,7 +246,7 @@ class Plugin(indigo.PluginBase):
             self.socket.close()
 
         except Exception as e:
-            self.logger.debug("Planned exception closing Socket:"+e.message)
+            self.logger.debug("Planned exception closing Socket:", exc_info=True )
             pass
 
         try:
@@ -256,11 +257,11 @@ class Plugin(indigo.PluginBase):
             s.connect((address, int(port)))
             self.logger.info("Socket for IP150 communication is Connected")
             self.connected = True
-            self.logger.debug("Socket Timout = "+unicode(s.gettimeout()))
+            self.logger.debug("Socket Timout = "+str(s.gettimeout()))
 
-        except Exception, e:
+        except Exception as e:
             self.logger.debug("Error connecting to IP module (exiting): " + repr(e))
-            self.logger.debug( "Error connecting"+unicode(e.message))
+            self.logger.debug( "Error connecting", exc_info=True)
             self.sleep(60)
             self.connected = False
 
@@ -355,7 +356,7 @@ class Plugin(indigo.PluginBase):
         self.logger.debug("Name of Event: "+str(nameofevent))
         self.triggerCheck(dev,"partitionstatuschange",0,idofevent)
         dev.updateStateOnServer(key="alarmState", value=nameofevent)
-        self.logger.debug("Partition Status Change/Event is:"+unicode(nameofevent))
+        self.logger.debug("Partition Status Change/Event is:"+str(nameofevent))
         ## message[7] always 2
         ## trigger check for all _partition status
 
@@ -371,7 +372,7 @@ class Plugin(indigo.PluginBase):
         self.triggerCheck(dev,"bellstatuschange",0,idofevent)
 
         dev.updateStateOnServer(key="BellState", value=nameofevent)
-        self.logger.debug("Bell Status Change/Event is:"+unicode(nameofevent))
+        self.logger.debug("Bell Status Change/Event is:"+str(nameofevent))
         ## message[7] always 2
         ## trigger check for all _partition status
 
@@ -387,7 +388,7 @@ class Plugin(indigo.PluginBase):
         self.logger.debug("Name of Event: " + str(nameofevent))
         self.triggerCheck(dev, "newtroublestatuschange", 0, idofevent)
         dev.updateStateOnServer(key="TroubleState", value=nameofevent)
-        self.logger.debug("Trouble Status Change/Event is:" + unicode(nameofevent))
+        self.logger.debug("Trouble Status Change/Event is:" + str(nameofevent))
         ## message[7] always 2
         ## trigger check for all _partition status
 
@@ -435,7 +436,7 @@ class Plugin(indigo.PluginBase):
             return True
         except Exception as error:
             self.errorLog(u"Error refreshing devices. Please check settings.")
-            self.errorLog(unicode(error.message))
+            self.errorLog("Exception:",exc_info=True)
             return False
     ## zonelist return
 
@@ -464,7 +465,7 @@ class Plugin(indigo.PluginBase):
         subevent =""
         partitionstatus = self.eventmap.getAllpartitionStatus()
         for key,value in partitionstatus.items():
-            self.logger.debug("Key/SubEvent:"+unicode(key)+":"+unicode(value))
+            self.logger.debug("Key/SubEvent:"+str(key)+":"+str(value))
             if key==99 or str(value)=='N/A':
                 continue
             endArray.append((str(key), value))
@@ -475,7 +476,7 @@ class Plugin(indigo.PluginBase):
         subevent =""
         partitionstatus = self.eventmap.getAllbellStatus()
         for key,value in partitionstatus.items():
-            self.logger.debug("Key/SubEvent:"+unicode(key)+":"+unicode(value))
+            self.logger.debug("Key/SubEvent:"+str(key)+":"+str(value))
             if key==99 or str(value)=='N/A':
                 continue
             endArray.append((str(key), value))
@@ -486,7 +487,7 @@ class Plugin(indigo.PluginBase):
         subevent =""
         partitionstatus = self.eventmap.getAllnewtroubleStatus()
         for key,value in partitionstatus.items():
-            self.logger.debug("Key/SubEvent:"+unicode(key)+":"+unicode(value))
+            self.logger.debug("Key/SubEvent:"+str(key)+":"+str(value))
             if key==99 or str(value)=='N/A':
                 continue
             endArray.append((str(key), value))
@@ -528,22 +529,22 @@ class Plugin(indigo.PluginBase):
                 self.logger.debug("Checking Trigger %s (%s), Type: %s" % (trigger.name, trigger.id, trigger.pluginTypeId))
 
                 if trigger.pluginTypeId=="partitionstatuschange" and event=="partitionstatuschange":
-                    #self.logger.error("Trigger paritionStatusChange Found: Idofevent:"+unicode(idofevent))
-                    #self.logger.error(unicode(trigger))
+                    #self.logger.error("Trigger paritionStatusChange Found: Idofevent:"+str(idofevent))
+                    #self.logger.error(str(trigger))
                     if str(idofevent) in trigger.pluginProps["paritionstatus"]:
-                        self.logger.debug("Trigger being run: idofevent: " + unicode(idofevent) + " event: " + unicode(event) )
+                        self.logger.debug("Trigger being run: idofevent: " + str(idofevent) + " event: " + str(event) )
                         indigo.trigger.execute(trigger)
                 if trigger.pluginTypeId=="bellstatuschange" and event=="bellstatuschange":
-                    #self.logger.error("Trigger paritionStatusChange Found: Idofevent:"+unicode(idofevent))
-                    #self.logger.error(unicode(trigger))
+                    #self.logger.error("Trigger paritionStatusChange Found: Idofevent:"+str(idofevent))
+                    #self.logger.error(str(trigger))
                     if str(idofevent) in trigger.pluginProps["bellstatus"]:
-                        self.logger.debug("Trigger being run: idofevent: " + unicode(idofevent) + " event: " + unicode(event) )
+                        self.logger.debug("Trigger being run: idofevent: " + str(idofevent) + " event: " + str(event) )
                         indigo.trigger.execute(trigger)
                 if trigger.pluginTypeId=="newtroublestatuschange" and event=="newtroublestatuschange":
-                    #self.logger.error("Trigger paritionStatusChange Found: Idofevent:"+unicode(idofevent))
-                    #self.logger.error(unicode(trigger))
+                    #self.logger.error("Trigger paritionStatusChange Found: Idofevent:"+str(idofevent))
+                    #self.logger.error(str(trigger))
                     if str(idofevent) in trigger.pluginProps["troublestatus"]:
-                        self.logger.debug("Trigger being run: idofevent: " + unicode(idofevent) + " event: " + unicode(event) )
+                        self.logger.debug("Trigger being run: idofevent: " + str(idofevent) + " event: " + str(event) )
                         indigo.trigger.execute(trigger)
                 if trigger.pluginTypeId == "failedCommand" and event == "failedCommand":
                     if trigger.pluginProps["zonePartition"] == int(partition):
@@ -566,7 +567,7 @@ class Plugin(indigo.PluginBase):
 
         except Exception as error:
             self.errorLog(u"Error Trigger. Please check settings.")
-            self.errorLog(unicode(error.message))
+            self.errorLog("Error:",exc_info=True)
             return False
 
     ## Actions

@@ -262,7 +262,7 @@ See: E.g. the mappings for an MG5050: http://www.imotionsecurite.com/pdf/paradox
 class ParadoxMG5050EventMap():
 
     def __init__(self):
-        print 'init'
+        print('init')
 
     '''mapping of event and subevent groups here'''
     eventGroupMap = {0: 'Zone OK',
@@ -780,7 +780,7 @@ class ParadoxMG5050EventMap():
         try:
             return ParadoxMG5050EventMap.eventGroupMap[eg]
         except KeyError:
-            print "No ParadoxMap for: eg=%d" % (eg)
+            print( "No ParadoxMap for: eg=%d" % (eg))
             return "-"
 
     @staticmethod
@@ -788,7 +788,7 @@ class ParadoxMG5050EventMap():
         try:
             return ParadoxMG5050EventMap.subEventGroupMap[eg][seg]
         except KeyError:
-            print "No ParadoxMap for: eg=%d \t seg=%d" % (eg, seg)
+            print ("No ParadoxMap for: eg=%d \t seg=%d" % (eg, seg))
             return "-"
 
     @staticmethod
@@ -796,7 +796,7 @@ class ParadoxMG5050EventMap():
         try:
             return ParadoxMG5050EventMap.eventGroupMap[eg], ParadoxMG5050EventMap.subEventGroupMap[eg][seg]
         except KeyError:
-            print "No ParadoxMap for: eg=%d \t seg=%d" % (eg, seg)
+            print( "No ParadoxMap for: eg=%d \t seg=%d" % (eg, seg))
             return "-"
 
     @staticmethod
@@ -933,7 +933,7 @@ class ParadoxMG5050EventMap():
 
 
 if __name__ == '__main__':
-    print "Loaded Paradox Mapping"
+    print( "Loaded Paradox Mapping")
     # print ParadoxEventMap.getEventGroupDescription(0)
     # print ParadoxEventMap.getSubEventGroupDescription(1,22)
     # print ParadoxEventMap.getEventDescription(34,2)
