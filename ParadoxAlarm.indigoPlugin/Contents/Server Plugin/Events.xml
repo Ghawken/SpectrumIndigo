@@ -72,7 +72,7 @@
         </ConfigUI>
     </Event>
 
-              <Event id="bellstatuschange">
+    <Event id="bellstatuschange">
         <Name>Bell Status Change</Name>
         <ConfigUI>
 				<Field id="bellstatus" type="list" rows="14">

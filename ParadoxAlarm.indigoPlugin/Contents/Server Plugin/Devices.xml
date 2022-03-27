@@ -28,6 +28,11 @@
                 <TriggerLabel>IP Address Service</TriggerLabel>
                 <ControlPageLabel>IP Address</ControlPageLabel>
             </State>
+         <State id="IPModule">
+                <ValueType>String</ValueType>
+                <TriggerLabel>IP Module Details</TriggerLabel>
+                <ControlPageLabel>IP Module Details</ControlPageLabel>
+            </State>
 		   <State id="alarmState">
                 <ValueType>String</ValueType>
                 <TriggerLabel>Alarm State</TriggerLabel>
@@ -48,35 +53,35 @@
                 <TriggerLabel>Panel Reported Date</TriggerLabel>
 			 <ControlPageLabel>Panel Reported Date</ControlPageLabel>
             </State>
-		 		 <State id="firmware">
-                <ValueType>String</ValueType>
-                <TriggerLabel>Panel Reported Firmware</TriggerLabel>
-			 <ControlPageLabel>Panel Reported Firmware</ControlPageLabel>
-            </State>
 		 		 <State id="panelID">
                 <ValueType>String</ValueType>
                 <TriggerLabel>Panel Reported ID</TriggerLabel>
 			 <ControlPageLabel>Panel Reported ID</ControlPageLabel>
-            </State>
-		 		 <State id="producttype">
-                <ValueType>String</ValueType>
-                <TriggerLabel>Panel Reported Product Type</TriggerLabel>
-			 <ControlPageLabel>Panel Reported Product Type</ControlPageLabel>
             </State>
             <State id="battery">
                 <ValueType>Number</ValueType>
                 <TriggerLabel>Battery V</TriggerLabel>
 				<ControlPageLabel>Battery VOlts</ControlPageLabel>
              </State>
+                     <State id="Current_State">
+                <ValueType>String</ValueType>
+                <TriggerLabel>Current State</TriggerLabel>
+                         <ControlPageLabel>Current State</ControlPageLabel>
+             </State>
 		    <State id="deviceIsOnline">
                 <ValueType>Boolean</ValueType>
                 <TriggerLabel>Device Online</TriggerLabel>
 				<ControlPageLabel>Device is Online</ControlPageLabel>
              </State>
-             <State id="batteryvdc">
+         		    <State id="systemTrouble">
+                <ValueType>Boolean</ValueType>
+                <TriggerLabel>System Trouble True/False</TriggerLabel>
+				<ControlPageLabel>System Trouble True/False</ControlPageLabel>
+             </State>
+             <State id="PowerVolts_DC">
                 <ValueType>Number</ValueType>
-                <TriggerLabel>Battery VDC</TriggerLabel>
-				 <ControlPageLabel>Battery VDC</ControlPageLabel>
+                <TriggerLabel>Power Volts DC</TriggerLabel>
+				 <ControlPageLabel>Power Volts VDC</ControlPageLabel>
             </State>
             <State id="batterydc">
                 <ValueType>Number</ValueType>
